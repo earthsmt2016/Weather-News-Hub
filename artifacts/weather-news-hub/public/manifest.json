@@ -1,0 +1,13 @@
+{
+  "name": "Birmingham Weather & News",
+  "short_name": "Bham Weather",
+  "description": "Weather forecast and local news for Birmingham and Solihull",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1a1a2e",
+  "icons": [
+    { "src": "/app-icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/app-icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
