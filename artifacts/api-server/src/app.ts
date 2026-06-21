@@ -9,7 +9,6 @@ import connectPg from "connect-pg-simple";
 import { pinoHttp } from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
-import { pool } from "@workspace/db";
 
 declare module "express-session" {
   interface SessionData {
@@ -41,7 +40,10 @@ app.use(express.urlencoded({ extended: true }));
 const PgStore = connectPg(session);
 app.use(
   session({
-    store: new PgStore({ pool, createTableIfMissing: true }),
+    store: new PgStore({
+      conString: process.env.DATABASE_URL,
+      createTableIfMissing: true,
+    }),
     secret: process.env.SESSION_SECRET || "dev-fallback-secret-change-me",
     resave: false,
     saveUninitialized: false,
