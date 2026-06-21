@@ -1,6 +1,14 @@
 import { logger } from "./logger";
 import { DEATH_FETCH_TIMEOUT_MS, THREE_DAYS_MS } from "./constants";
-import type { DeathArticle } from "../schema";
+
+export interface DeathArticle {
+  title: string;
+  description: string;
+  link: string;
+  pubDate: string;
+  source: string;
+  deathSubject?: string | null;
+}
 
 const DEATHS_CACHE_TTL = 15 * 60 * 1000;
 

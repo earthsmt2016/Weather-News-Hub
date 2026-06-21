@@ -6,9 +6,8 @@ import {
   type SavedArticle,
   pushSubscriptions,
   savedArticles,
-} from "./schema";
-import { randomUUID } from "crypto";
-import { db } from "@workspace/db";
+  db,
+} from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 
 export interface IStorage {

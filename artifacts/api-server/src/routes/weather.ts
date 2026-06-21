@@ -1,7 +1,7 @@
 import { Router, type Request } from "express";
+import { z } from "zod/v4";
 import { logger } from "../lib/logger";
 import { storage } from "../storage";
-import { updateNotificationPrefsSchema } from "../schema";
 import webpush from "web-push";
 import { getNewsFeeds } from "../lib/news-feeds";
 import { fetchCelebrityDeathArticles, getDeathsCache, setDeathsCache } from "../lib/death-feeds";
@@ -104,6 +104,21 @@ const newsCacheMap = new Map<string, CacheEntry>();
 
 const errMsg = (e: unknown): string =>
   e instanceof Error ? e.message : "An unexpected error occurred.";
+
+const updateNotificationPrefsSchema = z.object({
+  endpoint: z.string(),
+  notifyExtremeWeather: z.number().min(0).max(1).optional(),
+  notifyGeneralWeather: z.number().min(0).max(1).optional(),
+  notifyNewsSummary: z.number().min(0).max(1).optional(),
+  frequencyMinutes: z.number().min(15).max(360).optional(),
+  newsArticleCount: z.number().min(1).max(5).optional(),
+  notifyCelebrityDeaths: z.number().min(0).max(1).optional(),
+  scheduledTimes: z.string().optional(),
+  lastNotifiedAt: z.string().nullable().optional(),
+  lastCelebDeathNotifiedAt: z.string().nullable().optional(),
+  quietHoursStart: z.string().nullable().optional(),
+  quietHoursEnd: z.string().nullable().optional(),
+});
 
 interface JsonFetchResponse {
   ok: boolean;

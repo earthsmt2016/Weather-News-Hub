@@ -1,6 +1,6 @@
 import { logger } from "./lib/logger";
 import { storage } from "./storage";
-import { type PushSubscription } from "./schema";
+import type { PushSubscription } from "@workspace/db";
 import webpush from "web-push";
 import {
   detectServerAlerts,
