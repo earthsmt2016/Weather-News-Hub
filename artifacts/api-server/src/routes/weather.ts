@@ -105,6 +105,22 @@ const newsCacheMap = new Map<string, CacheEntry>();
 const errMsg = (e: unknown): string =>
   e instanceof Error ? e.message : "An unexpected error occurred.";
 
+interface JsonFetchResponse {
+  ok: boolean;
+  status: number;
+  json(): Promise<unknown>;
+}
+
+interface FetchJsonInit {
+  headers?: Record<string, string>;
+}
+
+async function fetchJson<T>(url: string, errorLabel: string, init?: FetchJsonInit): Promise<T> {
+  const response = (await fetch(url, init)) as unknown as JsonFetchResponse;
+  if (!response.ok) throw new Error(`${errorLabel}: ${response.status}`);
+  return (await response.json()) as T;
+}
+
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_SUBJECT) {
   webpush.setVapidDetails(
     process.env.VAPID_SUBJECT,
@@ -122,9 +138,7 @@ router.get("/geocode", async (req, res) => {
     url.searchParams.set("count", "5");
     url.searchParams.set("language", "en");
     url.searchParams.set("format", "json");
-    const response = await fetch(url.toString());
-    if (!response.ok) throw new Error(`Geocoding API error: ${response.status}`);
-    const data = (await response.json()) as GeocodingApiResponse;
+    const data = await fetchJson<GeocodingApiResponse>(url.toString(), "Geocoding API error");
     const results = (data.results || []).map((r) => ({
       id: r.id,
       name: r.name,
@@ -146,9 +160,9 @@ router.get("/reverse-geocode", async (req, res) => {
     const lon = parseFloat(req.query.lon as string);
     if (isNaN(lat) || isNaN(lon)) return res.status(400).json({ message: "Invalid coordinates" });
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`;
-    const response = await fetch(url, { headers: { "User-Agent": "WeatherDashboardApp/1.0" } });
-    if (!response.ok) throw new Error(`Nominatim error: ${response.status}`);
-    const data = (await response.json()) as NominatimReverseResponse;
+    const data = await fetchJson<NominatimReverseResponse>(url, "Nominatim error", {
+      headers: { "User-Agent": "WeatherDashboardApp/1.0" },
+    });
     const address = data.address || {};
     const name = address.city || address.town || address.village || address.county || address.state || data.display_name?.split(",")[0] || "Unknown";
     const regionParts = [address.state_district, address.county, address.state].filter(
@@ -187,9 +201,7 @@ router.get("/weather", async (req, res) => {
     url.searchParams.set("timezone", "Europe/London");
     url.searchParams.set("forecast_days", "7");
 
-    const response = await fetch(url.toString());
-    if (!response.ok) throw new Error(`Open-Meteo API error: ${response.status}`);
-    const data = (await response.json()) as OpenMeteoForecastResponse;
+    const data = await fetchJson<OpenMeteoForecastResponse>(url.toString(), "Open-Meteo API error");
 
     const current = {
       time: data.current.time,
@@ -346,9 +358,7 @@ router.get("/air-quality", async (req, res) => {
     url.searchParams.set("latitude", lat.toString());
     url.searchParams.set("longitude", lon.toString());
     url.searchParams.set("current", "european_aqi,pm10,pm2_5,nitrogen_dioxide,ozone");
-    const response = await fetch(url.toString());
-    if (!response.ok) throw new Error(`Air Quality API error: ${response.status}`);
-    const data = (await response.json()) as AirQualityApiResponse;
+    const data = await fetchJson<AirQualityApiResponse>(url.toString(), "Air Quality API error");
     const result = {
       europeanAqi: data.current.european_aqi,
       pm10: data.current.pm10,

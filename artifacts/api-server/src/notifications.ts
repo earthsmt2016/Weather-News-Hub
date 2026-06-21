@@ -33,6 +33,11 @@ const NEWS_FETCH_TTL      = 10 * MS_PER_MINUTE;
 const errMsg = (e: unknown): string =>
   e instanceof Error ? e.message : "An unexpected error occurred.";
 
+interface JsonFetchResponse {
+  ok: boolean;
+  json(): Promise<unknown>;
+}
+
 interface WebPushError { statusCode?: number; }
 function isWebPushError(e: unknown): e is WebPushError {
   return typeof e === "object" && e !== null && "statusCode" in e;
@@ -76,7 +81,7 @@ async function fetchWeatherForSub(sub: { latitude: string; longitude: string }):
     url.searchParams.set("daily", "weather_code,temperature_2m_max,temperature_2m_min");
     url.searchParams.set("timezone", "auto");
     url.searchParams.set("forecast_days", "3");
-    const response = await fetch(url.toString());
+    const response = (await fetch(url.toString())) as unknown as JsonFetchResponse;
     if (!response.ok) return null;
     const data = (await response.json()) as WeatherFetchResponse;
     const weatherData: CurrentWeatherRaw = data.current;
