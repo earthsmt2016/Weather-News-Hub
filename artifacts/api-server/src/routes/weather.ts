@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import { logger } from "../lib/logger";
 import { storage } from "../storage";
 import { updateNotificationPrefsSchema } from "../schema";
@@ -33,6 +33,71 @@ interface GeocodingApiResult {
   admin1?: string;
 }
 
+interface GeocodingApiResponse {
+  results?: GeocodingApiResult[];
+}
+
+interface NominatimReverseResponse {
+  display_name?: string;
+  address?: {
+    city?: string;
+    town?: string;
+    village?: string;
+    county?: string;
+    state?: string;
+    state_district?: string;
+    country?: string;
+  };
+}
+
+interface OpenMeteoForecastResponse {
+  current: {
+    time: string;
+    temperature_2m: number;
+    apparent_temperature: number;
+    relative_humidity_2m: number;
+    wind_speed_10m: number;
+    weather_code: number;
+    precipitation: number;
+    cloud_cover: number;
+    is_day: number;
+    uv_index: number;
+  };
+  hourly: {
+    time: string[];
+    temperature_2m: number[];
+    apparent_temperature: number[];
+    relative_humidity_2m: number[];
+    wind_speed_10m: number[];
+    weather_code: number[];
+    precipitation_probability: number[];
+    cloud_cover: number[];
+    is_day: number[];
+  };
+  daily: {
+    time: string[];
+    weather_code: number[];
+    temperature_2m_max: number[];
+    temperature_2m_min: number[];
+    precipitation_sum: number[];
+    wind_speed_10m_max: number[];
+    precipitation_probability_max: number[];
+    sunrise: string[];
+    sunset: string[];
+    uv_index_max: number[];
+  };
+}
+
+interface AirQualityApiResponse {
+  current: {
+    european_aqi: number;
+    pm10: number;
+    pm2_5: number;
+    nitrogen_dioxide: number;
+    ozone: number;
+  };
+}
+
 const weatherCacheMap = new Map<string, CacheEntry>();
 const airQualityCacheMap = new Map<string, CacheEntry>();
 const newsCacheMap = new Map<string, CacheEntry>();
@@ -59,8 +124,8 @@ router.get("/geocode", async (req, res) => {
     url.searchParams.set("format", "json");
     const response = await fetch(url.toString());
     if (!response.ok) throw new Error(`Geocoding API error: ${response.status}`);
-    const data = await response.json();
-    const results = (data.results || [] as GeocodingApiResult[]).map((r: GeocodingApiResult) => ({
+    const data = (await response.json()) as GeocodingApiResponse;
+    const results = (data.results || []).map((r) => ({
       id: r.id,
       name: r.name,
       latitude: r.latitude,
@@ -83,10 +148,12 @@ router.get("/reverse-geocode", async (req, res) => {
     const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1`;
     const response = await fetch(url, { headers: { "User-Agent": "WeatherDashboardApp/1.0" } });
     if (!response.ok) throw new Error(`Nominatim error: ${response.status}`);
-    const data = await response.json();
+    const data = (await response.json()) as NominatimReverseResponse;
     const address = data.address || {};
     const name = address.city || address.town || address.village || address.county || address.state || data.display_name?.split(",")[0] || "Unknown";
-    const regionParts = [address.state_district, address.county, address.state].filter(Boolean);
+    const regionParts = [address.state_district, address.county, address.state].filter(
+      (part): part is string => Boolean(part),
+    );
     const uniqueParts: string[] = [];
     for (const p of regionParts) { if (!uniqueParts.includes(p)) uniqueParts.push(p); }
     const region = uniqueParts.join(", ") || "";
@@ -122,7 +189,7 @@ router.get("/weather", async (req, res) => {
 
     const response = await fetch(url.toString());
     if (!response.ok) throw new Error(`Open-Meteo API error: ${response.status}`);
-    const data = await response.json();
+    const data = (await response.json()) as OpenMeteoForecastResponse;
 
     const current = {
       time: data.current.time,
@@ -281,7 +348,7 @@ router.get("/air-quality", async (req, res) => {
     url.searchParams.set("current", "european_aqi,pm10,pm2_5,nitrogen_dioxide,ozone");
     const response = await fetch(url.toString());
     if (!response.ok) throw new Error(`Air Quality API error: ${response.status}`);
-    const data = await response.json();
+    const data = (await response.json()) as AirQualityApiResponse;
     const result = {
       europeanAqi: data.current.european_aqi,
       pm10: data.current.pm10,

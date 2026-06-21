@@ -43,6 +43,16 @@ interface WeatherFetchResult {
   dailyData: DailyWeatherRaw[];
 }
 
+interface WeatherFetchResponse {
+  current: CurrentWeatherRaw;
+  daily?: {
+    time?: string[];
+    weather_code: number[];
+    temperature_2m_max: number[];
+    temperature_2m_min: number[];
+  };
+}
+
 interface NewsArticleItem {
   title: string;
   link: string;
@@ -68,12 +78,13 @@ async function fetchWeatherForSub(sub: { latitude: string; longitude: string }):
     url.searchParams.set("forecast_days", "3");
     const response = await fetch(url.toString());
     if (!response.ok) return null;
-    const data = await response.json();
+    const data = (await response.json()) as WeatherFetchResponse;
     const weatherData: CurrentWeatherRaw = data.current;
-    const dailyData: DailyWeatherRaw[] = data.daily?.time?.map((_: string, i: number) => ({
-      weather_code: data.daily.weather_code[i],
-      temperature_2m_max: data.daily.temperature_2m_max[i],
-      temperature_2m_min: data.daily.temperature_2m_min[i],
+    const daily = data.daily;
+    const dailyData: DailyWeatherRaw[] = daily?.time?.map((_: string, i: number) => ({
+      weather_code: daily.weather_code[i],
+      temperature_2m_max: daily.temperature_2m_max[i],
+      temperature_2m_min: daily.temperature_2m_min[i],
     })) || [];
     const result: WeatherFetchResult = { weatherData, dailyData };
     weatherFetchCache.set(cacheKey, { data: result, ts: Date.now() });

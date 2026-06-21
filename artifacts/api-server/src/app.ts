@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import session from "express-session";
@@ -51,6 +54,28 @@ app.use(
 );
 
 app.use("/api", router);
+
+const appDir = path.dirname(fileURLToPath(import.meta.url));
+const frontendDistCandidates = [
+  process.env.FRONTEND_DIST_DIR ? path.resolve(process.env.FRONTEND_DIST_DIR) : undefined,
+  path.resolve(appDir, "../../../dist"),
+  path.resolve(appDir, "../../weather-news-hub/dist/public"),
+].filter((candidate): candidate is string => Boolean(candidate));
+
+const frontendDistDir = frontendDistCandidates.find((candidate) =>
+  existsSync(path.join(candidate, "index.html")),
+);
+
+if (frontendDistDir) {
+  app.use(express.static(frontendDistDir, { index: false }));
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if ((req.method !== "GET" && req.method !== "HEAD") || req.path.startsWith("/api")) {
+      return next();
+    }
+
+    res.sendFile(path.join(frontendDistDir, "index.html"));
+  });
+}
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   const asRecord = typeof err === "object" && err !== null ? (err as Record<string, unknown>) : {};
